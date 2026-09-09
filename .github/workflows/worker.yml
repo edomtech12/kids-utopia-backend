@@ -11,6 +11,7 @@ on:
       - "Dockerfile.worker"
       - "go.mod"
       - "go.sum"
+      - ".github/workflows/deploy-worker.yml"
 
 env:
   AWS_REGION: us-east-1
