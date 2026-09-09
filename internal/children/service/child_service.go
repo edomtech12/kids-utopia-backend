@@ -47,8 +47,8 @@ func (s *ChildService) FindByID(ctx context.Context, id string) (*model.Child, *
 
 	snap, err := s.gamification.GetSnapshot(ctx, id)
 	if err != nil {
-		log.Println("gamification error:", err)
-		return child, nil, nil // never block child
+		log.Println("gamification errorrs:", err)
+		return child, nil, nil // never block child never
 	}
 
 	return child, snap, nil
