@@ -1,0 +1,85 @@
+package service
+
+import (
+	"context"
+	"fmt"
+
+	"github.com/bellapacx/kids-utopia/internal/books/dto"
+	"github.com/bellapacx/kids-utopia/internal/books/repository"
+	"github.com/bellapacx/kids-utopia/pkg/storage"
+)
+
+type EditorService struct {
+	bookRepo  repository.BookRepository
+	pageRepo  repository.BookPagesRepository
+	storage   storage.Storage
+}
+func (s *EditorService) GetEditor(
+	ctx context.Context,
+	variantID string,
+) (*dto.EditorResponse, error) {
+
+	book, err := s.bookRepo.FindVariantByID(ctx, variantID)
+	if err != nil {
+		return nil, err
+	}
+
+	pages, err := s.pageRepo.GetPagesByVariantID(ctx, variantID)
+	if err != nil {
+		return nil, err
+	}
+
+	// convert image_key → presigned URL
+	for i := range pages {
+		if pages[i].ImageKey != "" {
+			pages[i].ImageURL = s.storage.GetPublicURL(
+	pages[i].ImageKey,
+)
+		}
+	}
+
+	return &dto.EditorResponse{
+		BookID: book.ID,
+		Status: book.Status,
+		Progress: book.Progress,
+		Pages:  pages,
+	}, nil
+}
+func (s *EditorService) SaveEditor(
+	ctx context.Context,
+	variantID string,
+	req dto.SaveEditorRequest,
+) error {
+
+	return s.pageRepo.SavePagesByVariant(ctx, variantID, req.Pages)
+}
+func NewEditorService(
+	bookRepo repository.BookRepository,
+	pageRepo repository.BookPagesRepository,
+	storage storage.Storage,
+) *EditorService {
+
+	return &EditorService{
+		bookRepo: bookRepo,
+		pageRepo: pageRepo,
+		storage:  storage,
+	}
+}
+func (s *EditorService) UpdateAccessType(
+	ctx context.Context,
+	bookID string,
+	accessType string,
+) error {
+
+	// optional: ensure book exists first
+	book, err := s.bookRepo.FindByID(ctx, bookID)
+	if err != nil {
+		return err
+	}
+
+	if book == nil {
+		return fmt.Errorf("book not found")
+	}
+
+	return s.UpdateAccessType(ctx, bookID, accessType)
+}

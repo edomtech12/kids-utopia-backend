@@ -1,0 +1,109 @@
+package middleware
+
+import (
+	"net/http"
+
+	"github.com/gin-gonic/gin"
+
+	"github.com/bellapacx/kids-utopia/internal/access/service"
+	"github.com/bellapacx/kids-utopia/internal/books/repository"
+	"github.com/bellapacx/kids-utopia/pkg/contextkeys"
+)
+
+type Middleware struct {
+	accessService *service.Service
+	bookRepo      repository.BookRepository
+}
+
+func New(
+	a *service.Service,
+	b repository.BookRepository,
+) *Middleware {
+	return &Middleware{
+		accessService: a,
+		bookRepo:      b,
+	}
+}
+
+func (m *Middleware) CheckBookAccess() gin.HandlerFunc {
+	return func(c *gin.Context) {
+
+		// =========================
+		// ROLE BYPASS
+		// =========================
+		role := c.GetString(contextkeys.Role)
+
+		if role == "editor" ||
+			role == "admin" ||
+			role == "super_admin" {
+			c.Next()
+			return
+		}
+
+		// =========================
+		// BOOK ID
+		// =========================
+		bookID := c.Param("id")
+		if bookID == "" {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"error": "missing book id",
+			})
+			c.Abort()
+			return
+		}
+
+		// =========================
+		// FETCH BOOK
+		// =========================
+		book, err := m.bookRepo.GetBookByID(c, bookID)
+		if err != nil {
+			c.JSON(http.StatusNotFound, gin.H{
+				"error": "book not found",
+			})
+			c.Abort()
+			return
+		}
+
+		// =========================
+		// ⭐ FREE ACCESS CHECK (NEW)
+		// =========================
+		if book.AccessType == "free" {
+			c.Next()
+			return
+		}
+
+		// =========================
+		// AUTH CHECK
+		// =========================
+		userID := c.GetString(contextkeys.UserID)
+		if userID == "" {
+			c.JSON(http.StatusUnauthorized, gin.H{
+				"error": "unauthorized",
+			})
+			c.Abort()
+			return
+		}
+
+		// =========================
+		// SUBSCRIPTION CHECK
+       allowed, preview, err := m.accessService.CanAccessBook(c, userID, book)
+
+if err != nil {
+	c.JSON(500, gin.H{"error": "internal server error"})
+	c.Abort()
+	return
+}
+
+// 👉 ONLY block if NOT allowed AND NOT preview
+if !allowed && !preview {
+	c.JSON(403, gin.H{"error": "unauthorized"})
+	c.Abort()
+	return
+}
+
+// attach preview flag for handler
+c.Set("is_preview", preview)
+
+c.Next()
+	}
+}
