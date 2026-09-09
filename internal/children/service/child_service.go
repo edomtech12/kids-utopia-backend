@@ -8,7 +8,6 @@ import (
 	"github.com/bellapacx/kids-utopia/internal/children/model"
 	"github.com/bellapacx/kids-utopia/internal/children/repository"
 	GamificationService "github.com/bellapacx/kids-utopia/internal/gamification/service"
-	
 )
 
 type ChildService struct {
@@ -47,7 +46,7 @@ func (s *ChildService) FindByID(ctx context.Context, id string) (*model.Child, *
 
 	snap, err := s.gamification.GetSnapshot(ctx, id)
 	if err != nil {
-		log.Println("gamification errorrs:", err)
+		log.Println("gamification error:", err)
 		return child, nil, nil // never block child never
 	}
 

@@ -11,6 +11,7 @@ on:
       - "Dockerfile.api"
       - "go.mod"
       - "go.sum"
+      - ".github/workflows/deploy-api.yml"
 
 env:
   AWS_REGION: us-east-1
